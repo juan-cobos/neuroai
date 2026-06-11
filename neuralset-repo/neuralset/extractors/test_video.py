@@ -18,7 +18,7 @@ import neuralset as ns
 from neuralset.events import etypes
 
 from . import video as vid
-from .video import _HFVideoModel, _VideoImage, resamp_first_dim
+from .video import _VideoImage, resamp_first_dim
 
 logging.getLogger("neuralset").setLevel(logging.DEBUG)
 
@@ -133,34 +133,21 @@ def test_video_image_latent(video_event: etypes.Video, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "name,layer_type,embds",
+    "name,embds",
     [
         # shape is layers x tokens x embeddings
-        ("MCG-NJU/videomae-base", "", (13, 1568, 768)),
-        # ("microsoft/Phi-4-multimodal-instruct", "", (33, 7649, 3072)),
-        # ("facebook/vjepa2-vith-fpc64-256", "", (33, 8192, 1280)),
-        # ("microsoft/xclip-base-patch16", "", (13, 197, 768)),
-        # ("microsoft/xclip-base-patch16", "mit", (2, 8, 512)),
-        # ("google/vivit-b-16x2-kinetics400", "", (13, 3137, 768)),
-        # ("facebook/timesformer-base-finetuned-k600", "", (13, 1569, 768)),
-        # ("llava-hf/LLaVA-NeXT-Video-7B-hf", "Describe <video>", (33, 1156, 4096)),
-        #
-        # other versions of same families:
-        # ("microsoft/xclip-base-patch32-16-frames", "", 768),  # works
-        # ("microsoft/xclip-large-patch14", "", 1024),  # works
-        # ("microsoft/xclip-base-patch16-zero-shot", "", 768),  # works
-        # ("microsoft/xclip-large-patch14-16-frames", "", 1024),  # fails
+        ("MCG-NJU/videomae-base", (13, 1568, 768)),
+        # ("facebook/vjepa2-vith-fpc64-256", (33, 8192, 1280)),
+        # ("google/vivit-b-16x2-kinetics400", (13, 3137, 768)),
+        # ("facebook/timesformer-base-finetuned-k600", (13, 1569, 768)),
     ],
 )
 def test_video_models(
     video_event: etypes.Video,
     tmp_path: Path,
     name: str,
-    layer_type: str,
     embds: tuple[int, ...],
 ) -> None:
-    if not any(z in name for z in _HFVideoModel.MODELS):
-        raise ValueError(f"Model {name!r} is not supported")
     if "IN_GITHUB_ACTION" in os.environ and "videomae" not in name:
         pytest.skip("Only download video mae for CI tests")
     infra: tp.Any = {"folder": tmp_path / "cache"}
@@ -168,7 +155,7 @@ def test_video_models(
         frequency=0.5,
         max_imsize=120,
         infra=infra,
-        layer_type=layer_type,
+        num_frames=16,
         device="cpu",
         model_name=name,
         # show the full dimension
@@ -182,9 +169,15 @@ def test_video_models(
 
 
 def test_video_huggingface() -> None:
-    hf = _HFVideoModel(model_name="MCG-NJU/videomae-base")
-    data = np.random.rand(hf.model.config.num_frames, 3, 64, 64)
-    out = hf.predict_hidden_states(data)
+    extractor = vid.HuggingFaceVideo(
+        frequency=0.5,
+        model_name="MCG-NJU/videomae-base",
+        num_frames=16,
+        device="cpu",
+    )
+    config = tp.cast(tp.Any, extractor.model.config)
+    data = np.random.rand(config.num_frames, 3, 64, 64)
+    out = extractor._predict_hidden_states(data)
     assert out.shape == (1, 13, 1568, 768)
 
 

@@ -300,14 +300,12 @@ def test_llm_pretrained() -> None:
             aggregation="sum",
             contextualized=True,
             device=device,
-            pretrained=pretrained,  # type: ignore
+            pretrained=pretrained,
         )(word, 0, 1)
-        for pretrained in [True, False, "part-reversal"]
+        for pretrained in [True, False]
     ]
     with pytest.raises(AssertionError):
         np.testing.assert_array_almost_equal(outputs[0], outputs[1])
-    with pytest.raises(AssertionError):
-        np.testing.assert_array_almost_equal(outputs[0], outputs[2])
 
 
 @pytest.mark.parametrize(
@@ -371,13 +369,3 @@ def test_batched_target_slice_excludes_pads() -> None:
     )
     np.testing.assert_allclose(short_batched, short_alone, rtol=1e-3, atol=1e-3)
     np.testing.assert_allclose(long_batched, long_alone, rtol=1e-3, atol=1e-3)
-
-
-def test_part_reversal() -> None:
-    ref = np.random.rand(2, 3, 4)
-    x = torch.from_numpy(np.array(ref, copy=True))
-    np.testing.assert_almost_equal(x.numpy(), ref)
-    text.part_reversal(x)
-    assert x.shape == ref.shape
-    with pytest.raises(AssertionError):
-        np.testing.assert_almost_equal(x.numpy(), ref)

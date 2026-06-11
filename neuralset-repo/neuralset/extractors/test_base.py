@@ -336,10 +336,37 @@ def test_hf_aggregate_tokens(
     np.testing.assert_array_almost_equal(agged_t.numpy(), agged_n)
 
 
-def test_huggingface_model_exists():
+def test_huggingface_model_exists() -> None:
     base.HuggingFaceMixin(model_name="gpt2")
     with pytest.raises(ValueError):
         base.HuggingFaceMixin(model_name="not_a_model")
+
+
+def test_huggingface_config_resolves_class_defaults() -> None:
+    class DummyConfig(base.HuggingFaceConfig):
+        HF_CLASS_DEFAULTS: tp.ClassVar[dict[str, dict[str, str]]] = {
+            "custom-model": {
+                "model_cls_name": "PatternModel",
+                "processor_cls_name": "PatternProcessor",
+            },
+        }
+
+    config = DummyConfig()
+    assert (
+        config._resolved_cls_name("model_cls_name", "org/custom-model-small")
+        == "PatternModel"
+    )
+    assert (
+        config._resolved_cls_name("processor_cls_name", "org/custom-model-small")
+        == "PatternProcessor"
+    )
+    assert config._resolved_cls_name("model_cls_name", "org/other") == "AutoModel"
+
+    config = DummyConfig(model_cls_name="ExplicitModel")
+    assert (
+        config._resolved_cls_name("model_cls_name", "org/custom-model-small")
+        == "ExplicitModel"
+    )
 
 
 @pytest.mark.parametrize(
