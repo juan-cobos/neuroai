@@ -133,11 +133,14 @@ class AddSentenceToWords(EventsTransform):
     ----------
     max_unmatched_ratio : float
         Maximum ratio of words without a character-positioned match.
+    tolerance : float
+        Tolerance (in seconds) for Text event start and end times.
     override_sentences : bool, default=False
         Whether to replace existing Sentence rows if they are already present.
     """
 
     max_unmatched_ratio: float = 0.0  # raises if did not match enough words
+    tolerance: float = 0.0
     override_sentences: bool = False
 
     @classmethod
@@ -187,6 +190,7 @@ class AddSentenceToWords(EventsTransform):
                 events,
                 start=float(context.start),  # type: ignore[arg-type]
                 duration=float(context.duration),  # type: ignore[arg-type]
+                tolerance=self.tolerance,
             )
             sub = events.loc[encl]
             sel = sub[sub.type.isin(wtypes.names)].index
